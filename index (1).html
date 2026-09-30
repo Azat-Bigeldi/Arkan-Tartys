@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Канат Рандом</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+html,body{margin:0;height:100%;background:#111;color:#fff;font-family:'Press Start 2P',monospace}
+#app{height:100%;display:flex;flex-direction:column}
+#wrap{position:relative;flex:1;min-height:0}
+canvas{image-rendering:pixelated;width:100%;height:100%;object-fit:contain;display:block;background:#000}
+.ov{position:absolute;inset:0;background:rgba(10,10,30,.88);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:10px;overflow:auto}
+.ov.on{display:flex}
+h1{font-size:clamp(18px,5vw,44px);color:#ffd23f;text-shadow:4px 4px #c0392b;margin:0 0 6px;line-height:1.3}
+h2{font-size:clamp(12px,2.5vw,20px);color:#ffd23f;margin:0}
+p,li{font-size:clamp(8px,1.5vw,12px);line-height:1.8;max-width:760px;text-align:left;margin:2px 0}
+ul{padding-left:18px;margin:0}
+button{font:inherit;cursor:pointer}
+.b{font-size:clamp(9px,1.8vw,15px);padding:12px 16px;background:#ffd23f;color:#111;border:4px solid #000;box-shadow:0 5px #b8860b}
+.b.sel{background:#2ecc71;box-shadow:0 5px #1e8449}
+.b.big{font-size:clamp(11px,2.4vw,20px);padding:16px 22px}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+#snd{position:absolute;top:6px;right:6px;z-index:5;padding:6px 8px;font-size:12px}
+#ctl{display:none;justify-content:space-between;padding:8px;gap:8px;background:#000}
+#ctl.show{display:none}
+@media (hover:none),(pointer:coarse){#ctl.show{display:flex}}
+.tp{display:flex;gap:8px}
+.tp button{width:26vw;max-width:170px;height:84px;font-size:12px;border:4px solid #000;color:#fff}
+#a1 button,#a2 button{background:#c0392b}#a2 button{background:#2471a3}
+#a1 button+button,#a2 button+button{filter:brightness(1.3)}
+td,th{font-size:clamp(8px,1.5vw,12px);padding:4px 8px}
+</style></head><body>
+<div id="app">
+<div id="wrap">
+<canvas id="c" width="480" height="270"></canvas>
+<button id="snd" class="b">ЗВУК: ВКЛ</button>
+<div id="menu" class="ov on">
+ <h1>КАНАТ<br>РАНДОМ</h1>
+ <div class="row"><button class="b big" data-m="bot">1P vs БОТ</button><button class="b big" data-m="pvp">1P vs 2P</button></div>
+ <div class="row" id="diff"><button class="b" data-d="0">ЛЕГКО</button><button class="b" data-d="1">НОРМ</button><button class="b" data-d="2">ТЯЖЕЛО</button></div>
+ <div class="row"><button class="b" id="bRules">КАК ИГРАТЬ</button><button class="b" id="bStats">СТАТИСТИКА</button></div>
+</div>
+<div id="rules" class="ov">
+ <h2>ПРАВИЛА</h2>
+ <ul>
+ <li>Цель: утянуть красную метку-флаг на свою линию. Слева P1 (красный), справа P2 или бот (синий).</li>
+ <li>Матч — до 2 побед в раундах. Раунд длится 45 секунд.</li>
+ <li>Тяга: P1 — A, P2 — ←. Каждое НАЖАТИЕ отдельное, зажатие не работает. Тратит 8 выносливости, интервал между тягами 80 мс.</li>
+ <li>Рывок: P1 — S, P2 — ↓. Мощнее тяги в 5 раз, тратит 35, нужно минимум 35 выносливости, перезарядка 2,5 с.</li>
+ <li>Выносливость (100) восстанавливается только если не тянуть: пауза 0,5 с, затем +16 в секунду.</li>
+ <li>Усталость: при 0 выносливости 1,5 с нельзя тянуть, восстановление вдвое медленнее.</li>
+ <li>Ритм: тяга «в удар» метронома внизу даёт +30% к импульсу.</li>
+ <li>Каждый раунд — случайный модификатор (одинаковый для обоих). Время вышло: побеждает тот, к чьей стороне ближе метка. Разница меньше 0,02 — ничья, играется дополнительный раунд.</li>
+ <li>Телефон: кнопки «ТЯНУ» и «РЫВОК» внизу экрана.</li>
+ </ul>
+ <div class="row"><button class="b" id="bTut">ОБУЧЕНИЕ</button><button class="b back">НАЗАД</button></div>
+</div>
+<div id="stats" class="ov"><h2>СТАТИСТИКА</h2><div id="stTxt"></div>
+ <div class="row"><button class="b" id="bReset">СБРОСИТЬ</button><button class="b back">НАЗАД</button></div></div>
+<div id="end" class="ov"><h1 id="endT"></h1><h2 id="endS"></h2>
+ <div class="row"><button class="b big" id="bRe">РЕВАНШ</button><button class="b big back">МЕНЮ</button></div></div>
+</div>
+<div id="ctl">
+ <div class="tp" id="a1"><button data-p="0" data-d="0">ТЯНУ</button><button data-p="0" data-d="1">РЫВОК</button></div>
+ <div class="tp" id="a2"><button data-p="1" data-d="0">ТЯНУ</button><button data-p="1" data-d="1">РЫВОК</button></div>
+</div>
+</div>
+<script>
+"use strict";
+/* ===== Канат Рандом. Логика (update) отделена от отрисовки (draw). ===== */
+const $=id=>document.getElementById(id), cv=$('c'), g=cv.getContext('2d'), W=480, H=270, STEP=1/60, GY=200;
+g.imageSmoothingEnabled=false;
+const FONT="'Press Start 2P',monospace";
+
+// ---------- Настройки и статистика (localStorage в try/catch) ----------
+let set={diff:1,sound:true,tut:0}, stats={w1:0,w2:0,d:0,last:[]};
+try{Object.assign(set,JSON.parse(localStorage.getItem('kr_set')||'{}'));
+ const s=JSON.parse(localStorage.getItem('kr_stats')||'null'); if(s)stats=s;}catch(e){}
+const save=()=>{try{localStorage.setItem('kr_set',JSON.stringify(set));localStorage.setItem('kr_stats',JSON.stringify(stats));}catch(e){}};
+
+// ---------- Звук: Web Audio, всё синтезируется ----------
+let ac=null;
+function A(){if(!ac){try{ac=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}}
+ if(ac&&ac.state==='suspended')ac.resume();return ac;}
+function tone(f,d,type='square',vol=.07,slide=0,delay=0){
+ if(!set.sound)return;const a=A();if(!a)return;
+ const o=a.createOscillator(),n=a.createGain(),t0=a.currentTime+delay;
+ o.type=type;o.frequency.setValueAtTime(f,t0);
+ if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t0+d);
+ n.gain.setValueAtTime(vol,t0);n.gain.exponentialRampToValueAtTime(.001,t0+d);
+ o.connect(n);n.connect(a.destination);o.start(t0);o.stop(t0+d);}
+function noise(d,vol=.1){
+ if(!set.sound)return;const a=A();if(!a)return;
+ const b=a.createBuffer(1,a.sampleRate*d|0,a.sampleRate),c=b.getChannelData(0);
+ for(let i=0;i<c.length;i++)c[i]=(Math.random()*2-1)*(1-i/c.length);
+ const s=a.createBufferSource(),n=a.createGain();n.gain.value=vol;s.buffer=b;s.connect(n);n.connect(a.destination);s.start();}
+const sfx={pull:()=>tone(220,.06,'square',.06,90),dash:()=>{noise(.25,.15);tone(140,.3,'sawtooth',.09,400)},
+ tick:()=>tone(440,.1),go:()=>tone(880,.5,'square',.1),tired:()=>tone(160,.5,'triangle',.12,-90),
+ win:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.2,'square',.08,0,i*.12)),draw:()=>tone(300,.4,'triangle',.1)};
+
+// ---------- Состояние игры ----------
+const MODS=[{n:'СКОЛЬЗКАЯ ПЛОЩАДКА',k:1.1},{n:'ВЕТЕР',wind:1},{n:'ТЯЖЁЛЫЙ КАНАТ',imp:.7,regen:1.5},
+ {n:'ТУРБО',ts:1.3,imp:1.2},{n:'ГИГАНТ',giant:1}];
+const BASE={n:'',k:2.2,imp:1,regen:1,ts:1,wind:0,giant:0};
+let state='menu',mode='bot',pendingMode=null,score=[0,0],roundNo=1,T=0,t=0,pos=0,v=0,timeLeft=45,
+ cdT=0,lastNum=0,goT=0,endT=0,rw=-1,shake=0,flash=0,venue=0,mod=BASE,P=[],q=[],parts=[],stars=[],
+ tut={step:0,t:0},bot={t:.4,rest:false};
+const rnd=n=>Math.random()*n|0, clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+
+function mkP(side){ // игрок: выносливость, перезарядка, усталость, внешний вид (только косметика)
+ const cols=side?['#3b82f6','#2563eb','#0ea5e9']:['#e74c3c','#c0392b','#f97316'];
+ return{side,stam:100,cd:0,last:-9,delay:0,tired:0,size:1,cost:1,kick:0,beat:0,pulls:0,dashes:0,fall:0,fa:0,win:0,off:false,
+  col:cols[rnd(3)],hair:['#222','#7b4a1e','#e6c229','#c0392b'][rnd(4)],cap:Math.random()<.5,capC:['#fff','#222','#2ecc71'][rnd(3)]};}
+
+// reset(): полностью чистое состояние раунда
+function reset(){
+ pos=0;v=0;t=0;timeLeft=45;q=[];parts=[];goT=0;flash=0;shake=0;rw=-1;bot={t:.4,rest:false};
+ P=[mkP(0),mkP(1)];
+ const m=MODS[rnd(MODS.length)];mod=Object.assign({},BASE,m);
+ if(mod.wind)mod.wind=(Math.random()<.5?-1:1)*.02;   // ветер в случайную сторону
+ if(mod.giant){const p=P[rnd(2)];p.size=1.25;p.cost=1.2;} // гигант: крупнее, но тратит на 20% больше
+ venue=rnd(4);stars=[];for(let i=0;i<40;i++)stars.push([rnd(W),rnd(150)]);}
+
+// Метроном общий для обоих: «удар» — первые 0.18 с каждых 0.6 с
+const beatPh=()=>(t+.09)%.6, onBeat=()=>beatPh()<.18;
+
+// pull(): единая проверка всех лимитов. Вызывается и для игроков, и для бота.
+// dash=false — обычная тяга, true — рывок. Возвращает true, если действие принято.
+function pull(p,dash){
+ if(p.tired>0)return false;                       // усталость: нельзя тянуть
+ if(dash){if(p.cd>0||p.stam<35)return false;}     // рывок: перезарядка и минимум 35
+ else if(t-p.last<.08||p.stam<=0)return false;    // тяга: интервал 80 мс
+ let imp=(dash?.8:.16)*mod.imp;                   // рывок ≈ в 5 раз сильнее тяги
+ if(!dash&&onBeat()){imp*=1.3;p.beat=.3;}         // ритм-бонус +30%, лимиты не отключает
+ p.stam=Math.max(0,p.stam-(dash?35:8)*p.cost);
+ p.last=t;p.delay=.5;                             // пауза перед восстановлением
+ v+=(p.side?1:-1)*imp;                            // P1 тянет к -1, P2 к +1
+ p.kick=dash?.6:.3;
+ const fx=240+pos*100+(p.side?70:-70);
+ for(let i=0;i<(dash?9:3);i++)parts.push({x:fx,y:GY,vx:(Math.random()-.5)*60,vy:-Math.random()*30,l:.5,c:'#c9b48a',g:60});
+ if(dash){p.cd=2.5;p.dashes++;shake=.5;flash=.6;sfx.dash();}else{p.pulls++;sfx.pull();}
+ if(p.stam<=0){p.tired=1.5;sfx.tired();}          // выносливость кончилась → усталость
+ return true;}
+
+// Бот: те же правила через pull(). Сложность = только время реакции и выбор момента.
+function botThink(dt){
+ const b=P[1];bot.t-=dt;if(bot.t>0)return;
+ bot.t=[.34,.22,.14][set.diff]*(.7+Math.random()*.6);   // реакция ±30%
+ if(b.tired>0)return;
+ if(bot.rest){if(b.stam>55)bot.rest=false;else return;}  // отдыхает, пока не накопит силы
+ if(b.stam<18){bot.rest=true;return;}
+ const losing=pos<-.12;                                    // метка сместилась в сторону бота
+ if(b.cd<=0&&b.stam>=35&&(losing||b.stam>85)){pull(b,true);return;}
+ pull(b,false);}
+
+// ---------- Конечный автомат ----------
+function show(id){document.querySelectorAll('.ov').forEach(o=>o.classList.toggle('on',o.id===id));
+ $('ctl').classList.toggle('show',['countdown','playing','tutorial','roundEnd'].includes(state));
+ $('a2').style.display=(mode==='bot'||state==='tutorial')?'none':'flex';}
+function toMenu(){state='menu';show('menu');}
+function newRound(){reset();state='countdown';cdT=4;lastNum=4;show(null);}
+function startMatch(m){mode=m;score=[0,0];roundNo=1;newRound();}
+function startGame(m){mode=m;if(!set.tut){pendingMode=m;startTut();}else startMatch(m);}
+function startTut(){reset();mod=Object.assign({},BASE);P.forEach(p=>{p.size=1;p.cost=1;});P[1].off=true;tut={step:0,t:0};state='tutorial';show(null);}
+function finishTut(){set.tut=1;save();if(pendingMode){const m=pendingMode;pendingMode=null;startMatch(m);}else toMenu();}
+function endRound(w){
+ state='roundEnd';endT=2.8;rw=w;
+ if(w<0){stats.d++;save();sfx.draw();}
+ else{score[w]++;const l=P[1-w];l.fall=1;l.fa=0;P[w].win=1;sfx.win();
+  for(let i=0;i<70;i++)parts.push({x:rnd(W),y:-rnd(60),vx:(Math.random()-.5)*40,vy:20+rnd(40),l:3,g:40,w:3,c:['#ffd23f','#e74c3c','#3b82f6','#2ecc71','#fff'][rnd(5)]});
+  for(let i=0;i<12;i++)parts.push({x:240+pos*100+(l.side?70:-70),y:GY,vx:(Math.random()-.5)*80,vy:-Math.random()*50,l:.8,c:'#c9b48a',g:60});}}
+function afterRound(){if(score[0]>=2||score[1]>=2)matchEnd();else{roundNo++;newRound();}}
+function matchEnd(){
+ state='matchEnd';const w=score[0]>score[1]?0:1;
+ if(w)stats.w2++;else stats.w1++;
+ stats.last.unshift({m:mode,s:score.join(':'),w});stats.last=stats.last.slice(0,10);save();
+ $('endT').textContent=(w?(mode==='bot'?'БОТ':'P2'):'P1')+' ПОБЕДИЛ!';
+ $('endS').textContent='СЧЁТ '+score[0]+' : '+score[1];show('end');}
+
+// ---------- update(dt): фиксированный шаг 1/60 с ----------
+function update(dt){
+ T+=dt;shake=Math.max(0,shake-dt*2.5);flash=Math.max(0,flash-dt*4);if(goT>0)goT-=dt;
+ for(const p of parts){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=(p.g||0)*dt;p.l-=dt;}
+ parts=parts.filter(p=>p.l>0);
+ for(const p of P){p.kick*=Math.exp(-9*dt);if(p.beat>0)p.beat-=dt;if(p.fall&&p.fa<1)p.fa=Math.min(1,p.fa+dt*2.5);}
+ if(state==='countdown'){
+  cdT-=dt;const n=Math.ceil(cdT);
+  if(cdT<=0){state='playing';goT=.8;sfx.go();}
+  else if(n!==lastNum&&n<=3){lastNum=n;sfx.tick();}
+ }else if(state==='playing'||state==='tutorial')step(dt);
+ else if(state==='roundEnd'){endT-=dt;if(endT<=0)afterRound();}}
+
+function step(dt){
+ t+=dt;
+ // Ввод обрабатывается только здесь и только в playing/tutorial. Действия игроков независимы
+ // (каждое проверяет лишь свои лимиты, импульсы складываются) → порядок не даёт преимущества P1.
+ for(const [i,d] of q)if(!P[i].off)pull(P[i],d);
+ q=[];
+ if(state==='playing'&&mode==='bot')botThink(dt);
+ for(const p of P){ // таймеры и восстановление выносливости
+  if(p.off)continue;
+  if(p.tired>0)p.tired-=dt;
+  if(p.cd>0)p.cd-=dt;
+  if(p.delay>0)p.delay-=dt;
+  else p.stam=Math.min(100,p.stam+16*mod.regen*(p.tired>0?.5:1)*dt);}
+ // физика каната: ветер, затухание v*=exp(-k*dt), pos+=v*dt (не зависит от FPS)
+ const ts=mod.ts;
+ v+=mod.wind*dt*ts;v*=Math.exp(-mod.k*dt*ts);pos+=v*dt*ts;
+ if(state==='tutorial'){
+  pos=clamp(pos,-.95,.95);const p=P[0];
+  if(tut.step===0&&p.pulls>=3)tut.step=1;
+  else if(tut.step===1&&p.tired>0)tut.step=2;
+  else if(tut.step===2&&p.dashes>=1){tut.step=3;tut.t=2.2;sfx.win();}
+  else if(tut.step===3){tut.t-=dt;if(tut.t<=0)finishTut();}
+  return;}
+ timeLeft-=dt;
+ if(pos<=-1){pos=-1;endRound(0);}
+ else if(pos>=1){pos=1;endRound(1);}
+ else if(timeLeft<=0){timeLeft=0;endRound(Math.abs(pos)<.02?-1:(pos<0?0:1));}}
+
+// ---------- Ввод ----------
+function press(i,d){A();if(state!=='playing'&&state!=='tutorial')return;if(i===1&&(mode==='bot'||state==='tutorial'))return;q.push([i,d]);}
+addEventListener('keydown',e=>{
+ if(e.code.startsWith('Arrow'))e.preventDefault();
+ if(e.repeat)return; // зажатие игнорируется
+ const m={KeyA:[0,0],KeyS:[0,1],ArrowLeft:[1,0],ArrowDown:[1,1]}[e.code];if(m)press(m[0],!!m[1]);});
+document.querySelectorAll('#ctl button').forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();press(+b.dataset.p,b.dataset.d==='1');}));
+
+// ---------- Меню ----------
+function syncUI(){document.querySelectorAll('#diff .b').forEach(b=>b.classList.toggle('sel',+b.dataset.d===set.diff));
+ $('snd').textContent='ЗВУК: '+(set.sound?'ВКЛ':'ВЫКЛ');}
+document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{A();startGame(b.dataset.m);});
+document.querySelectorAll('#diff .b').forEach(b=>b.onclick=()=>{set.diff=+b.dataset.d;save();syncUI();});
+document.querySelectorAll('.back').forEach(b=>b.onclick=toMenu);
+$('bRules').onclick=()=>show('rules');$('bTut').onclick=()=>{pendingMode=null;startTut();};
+$('bRe').onclick=()=>startMatch(mode);
+$('snd').onclick=()=>{set.sound=!set.sound;save();syncUI();};
+function showStats(){
+ const rows=stats.last.map(x=>`<tr><td>${x.m==='bot'?'vs БОТ':'1v1'}</td><td>${x.s}</td><td>${x.w?(x.m==='bot'?'БОТ':'P2'):'P1'}</td></tr>`).join('');
+ $('stTxt').innerHTML=`<p>Победы P1: ${stats.w1} &nbsp; P2/БОТ: ${stats.w2} &nbsp; Ничьи (раунды): ${stats.d}</p><table style="margin:auto"><tr><th>Режим</th><th>Счёт</th><th>Победитель</th></tr>${rows||'<tr><td colspan=3>Пока пусто</td></tr>'}</table>`;show('stats');}
+$('bStats').onclick=showStats;
+$('bReset').onclick=()=>{stats={w1:0,w2:0,d:0,last:[]};save();showStats();};
+
+// ---------- Отрисовка (draw) — только читает состояние ----------
+const rect=(c,x,y,w,h)=>{g.fillStyle=c;g.fillRect(x|0,y|0,w|0,h|0);};
+function txt(s,x,y,size,c,al='center'){g.font=size+'px '+FONT;g.textAlign=al;g.fillStyle='#000';g.fillText(s,x+1,y+1);g.fillStyle=c;g.fillText(s,x,y);}
+function bg(){
+ if(venue===0){rect('#6cb4e4',0,0,W,GY);rect('#7a4a2a',0,120,W,55);for(let x=0;x<W;x+=12)rect('#5f3a20',x,120,2,55);rect('#3d7a2e',0,170,W,30);rect('#555',0,GY,W,H-GY);}
+ else if(venue===1){rect('#8ad8ff',0,0,W,GY);rect('#ffe066',400,20,30,30);rect('#2a7fd0',0,130,W,45);rect('#5fb0f0',0,150+Math.sin(T*2)*2,W,4);rect('#f0d48a',0,175,W,H-175);}
+ else if(venue===2){rect('#2b2d5b',0,0,W,GY);for(let x=0;x<W;x+=40){const h=50+(x*7%60);rect('#1a1b3a',x,GY-h-20,32,h+20);rect('#ffd23f',x+6,GY-h-10,4,4);}rect('#666',0,GY,W,H-GY);rect('#444',0,GY,W,4);}
+ else{rect('#05050f',0,0,W,GY);for(const s of stars)rect(Math.sin(T*3+s[0])>0?'#fff':'#888',s[0],s[1],2,2);
+  rect('#c9a86a',60,40,36,36);rect('#8a7448',72,52,8,8);rect('#3a3a55',0,GY,W,H-GY);rect('#5a5a80',0,GY,W,3);}
+ rect('rgba(0,0,0,.25)',0,GY,W,4);}
+function person(p,x){
+ const dir=p.side?-1:1;let lean=.08+p.kick,y=GY;
+ if(p.fa>0)lean=.08+p.fa*1.4;
+ if(p.win)y-=Math.abs(Math.sin(T*8))*6;
+ g.save();g.translate(x|0,y);
+ g.rotate(-dir*(lean+Math.sin(T*(p.tired>0?3:9)+p.side*2)*.03));  // «ватное» раскачивание
+ g.scale(p.size,p.tired>0&&!p.fa?.85:p.size);
+ rect('#222',-6,-14,5,14);rect('#222',1,-14,5,14);rect('#000',-7,-3,7,3);rect('#000',0,-3,7,3);
+ rect(p.col,-8,-34,16,20);
+ rect('#f1c27d',dir>0?6:-22,-30,16,5);                 // рука к канату
+ rect('#f1c27d',-6,-46,12,12);rect(p.hair,-6,-48,12,4);
+ if(p.cap){rect(p.capC,-7,-49,14,4);rect(p.capC,dir>0?2:-10,-46,8,2);}
+ rect('#000',dir>0?2:-4,-42,2,2);
+ if(p.tired>0)rect('#7fd4ff',dir>0?-4:2,-52-Math.sin(T*6)*2,2,3); // капля пота
+ g.restore();}
+function bar(i){
+ const p=P[i];if(p.off)return;const x=i?W-110:6;
+ rect('#000',x-2,10,108,12);rect(p.tired>0&&((T*8|0)%2)?'#fff':(p.tired>0?'#e74c3c':'#2ecc71'),x,12,104*p.stam/100,8);
+ const rdy=p.cd<=0&&p.stam>=35;
+ rect('#000',x-2,26,108,8);rect(rdy?'#ffd23f':'#888',x,28,104*(rdy?1:1-p.cd/2.5),4);
+ txt((i?(mode==='bot'?'БОТ':'P2'):'P1')+(rdy?' РЫВОК!':''),x+(i?104:0),46,7,i?'#7fc4ff':'#ff8a7a',i?'right':'left');}
+function draw(){
+ g.save();
+ if(shake>0)g.translate(((Math.random()-.5)*shake*10)|0,((Math.random()-.5)*shake*10)|0);
+ bg();
+ for(let y=120;y<GY;y+=8){rect('#e74c3c',140,y,2,4);rect('#3498db',340,y,2,4);}
+ if(mod.wind)for(let i=0;i<7;i++){const x=((T*40*Math.sign(mod.wind)+i*90)%W+W)%W;rect('#6ab04c',x,60+i*14+Math.sin(T*3+i)*4,4,2);}
+ const fx=240+pos*100,ry=GY-27;
+ person(P[0],fx-70);person(P[1],fx+70);
+ for(let x=fx-48;x<fx+48;x+=4){const s=2*(1-Math.pow((x-fx)/48,2));rect('#d9b26f',x,ry+s+Math.sin(x*.3+T*25)*(shake>0?1.5:.5),4,3);}
+ rect('#5a3a1a',fx,ry-18,2,20);rect('#ff2a2a',fx+2,ry-18,10+Math.sin(T*30)*2,7);
+ for(const p of parts){rect(p.c,p.x,p.y,p.w||2,p.w||2);}
+ // HUD
+ if(state!=='menu'){
+  bar(0);bar(1);
+  txt(state==='tutorial'?'ОБУЧЕНИЕ':Math.ceil(timeLeft)+'',240,20,14,timeLeft<10&&state==='playing'?'#ff5252':'#fff');
+  if(state!=='tutorial'){txt(score[0]+' : '+score[1],240,38,10,'#ffd23f');txt('РАУНД '+roundNo+(mod.n?' · '+mod.n:''),240,52,7,'#ddd');}
+  const ph=beatPh(),ob=ph<.18;      // метроном: маркер бежит по шкале, зелёная зона = «удар»
+  rect('#000',170,243,140,12);rect(ob?'#2ecc71':'#2a5a3a',172,245,.18/.6*136,8);rect('#fff',172+ph/.6*136,243,3,12);
+  txt('РИТМ',240,238,6,'#aaa');
+  txt('P1: A тяга · S рывок',6,266,6,'#fff','left');
+  if(mode==='pvp'||state==='tutorial')txt('P2: ← тяга · ↓ рывок',W-6,266,6,'#fff','right');}
+ if(flash>0){g.globalAlpha=flash*.5;rect('#fff',0,0,W,H);g.globalAlpha=1;}
+ // Большие надписи
+ if(state==='countdown'){txt(cdT>3?mod.n||'РАУНД '+roundNo:''+Math.ceil(cdT),240,140,cdT>3?16:48,'#ffd23f');}
+ if(goT>0)txt('ТЯНИ!',240,140,40,'#2ecc71');
+ if(state==='roundEnd'||state==='matchEnd')txt(rw<0?'НИЧЬЯ! ДОП. РАУНД':'ПОБЕДА '+(rw?(mode==='bot'?'БОТ':'P2'):'P1')+'!',240,120,rw<0?16:24,'#ffd23f');
+ if(state==='tutorial'){
+  const s=['ШАГ 1/3: ЖМИ A — ТЯНИ (3 РАЗА)','ШАГ 2/3: ЖМИ A ЧАЩЕ — ВЫНОСЛИВОСТЬ УПАДЁТ ДО 0','ШАГ 3/3: ДОЖДИСЬ 35 СИЛ И ЖМИ S — РЫВОК','ОТЛИЧНО!'][tut.step];
+  txt(s,240,100,8,'#ffd23f');}
+ g.restore();}
+
+// ---------- Главный цикл: накопитель времени ----------
+let last=0,acc=0;
+function loop(ts){const d=Math.min(.25,(ts-last)/1000);last=ts;acc+=d;
+ while(acc>=STEP){update(STEP);acc-=STEP;}draw();requestAnimationFrame(loop);}
+syncUI();reset();requestAnimationFrame(ts=>{last=ts;loop(ts);});
+</script></body></html>
