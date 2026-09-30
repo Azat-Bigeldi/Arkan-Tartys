@@ -1,8 +1,5 @@
 # Arkan Tartys
-
-![Скриншот](screenshot.png) <!-- плейсхолдер: положите сюда скриншот -->
-
-**Играть:** https://YOUR-NAME.github.io/arkan-tartys/ <!-- замените ссылкой на деплой -->
+**Играть:** https://arkan-tarty.netlify.app
 
 Пиксель-арт перетягивание каната в духе Basket Random. Одно устройство, 1P vs БОТ или 1P vs 2P, матч до 2 побед в 3 раундах.
 
@@ -43,8 +40,3 @@
 ## Стек
 HTML + CSS + JavaScript, Canvas 2D, Web Audio API, без сборщиков и внешних ассетов. Шрифт [Press Start 2P](https://fonts.google.com/specimen/Press+Start+2P) (Google Fonts, SIL OFL), запасной — `monospace`. При разработке использовались AI-инструменты (Claude).
 
-## Запуск и деплой
-Локально: откройте `index.html` в браузере или `python3 -m http.server`.
-
-GitHub Pages: загрузите файлы в репозиторий → Settings → Pages → Deploy from branch → `main` / root.
-Vercel: импортируйте репозиторий как статический сайт (Framework: Other, без сборки).
